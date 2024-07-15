@@ -1,4 +1,6 @@
-_web-tokenizer/
+### Tree folder structure:
+
+WebTokenizer/
 ├── web-tokenizer-frontend.html (2523 bytes)
 ├── web-tokenizer-backend.py (1337 bytes)
 └── start-web-tokenizer.bat (246 bytes)
