@@ -1,0 +1,152 @@
+_web-tokenizer/
+├── web-tokenizer-frontend.html (2523 bytes)
+├── web-tokenizer-backend.py (1337 bytes)
+└── start-web-tokenizer.bat (246 bytes)
+
+### `web-tokenizer-frontend.html` file (2523 bytes):
+
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Tokenizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button {
+            margin-right: 10px;
+        }
+        #error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Web Tokenizer</h1>
+    <textarea id="inputText" placeholder="Enter some text" rows="10"></textarea>
+    <br>
+    <button onclick="tokenizeText()">Tokenize</button>
+    <button onclick="clearText()">Clear</button>
+    <p>Tokens: <span id="tokenCount">0</span></p>
+    <p>Characters: <span id="charCount">0</span></p>
+    <p id="error"></p>
+    <script>
+        const API_URL = '/tokenize';
+
+        async function tokenizeText() {
+            const text = document.getElementById('inputText').value;
+            const errorElement = document.getElementById('error');
+            errorElement.innerText = '';
+
+            console.log('Attempting to tokenize text:', text);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Received data:', data);
+
+                document.getElementById('tokenCount').innerText = data.tokens;
+                document.getElementById('charCount').innerText = data.characters;
+            } catch (error) {
+                console.error('Error:', error);
+                errorElement.innerText = `An error occurred: ${error.message}`;
+            }
+        }
+
+        function clearText() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('tokenCount').innerText = '0';
+            document.getElementById('charCount').innerText = '0';
+            document.getElementById('error').innerText = '';
+        }
+    </script>
+</body>
+</html>
+```
+
+### `web-tokenizer-backend.py` file (1337 bytes):
+
+```
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+import tiktoken
+import logging
+import os
+
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+@app.route('/')
+def serve_frontend():
+    return send_file('web-tokenizer-frontend.html')
+
+@app.route('/tokenize', methods=['POST'])
+def tokenize():
+    logger.debug("Received tokenize request")
+    try:
+        data = request.get_json()
+        if not data or 'text' not in data:
+            logger.warning("No text provided in request")
+            return jsonify(error="No text provided"), 400
+
+        text = data['text']
+        encoding = tiktoken.get_encoding('cl100k_base')  # Use cl100k_base for gpt-3.5-turbo
+        tokens = encoding.encode(text)
+        token_count = len(tokens)
+        char_count = len(text)
+
+        logger.info(f"Tokenized text. Tokens: {token_count}, Characters: {char_count}")
+        return jsonify(tokens=token_count, characters=char_count)
+
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)}", exc_info=True)
+        return jsonify(error=str(e)), 500
+
+if __name__ == '__main__':
+    logger.info("Starting the Flask server on port 2137")
+    app.run(host='0.0.0.0', port=2137, debug=True)
+```
+
+### `start-web-tokenizer.bat` file (246 bytes):
+
+```
+@echo off
+cd /d "%~dp0"
+
+REM Start the Flask server
+start python web-tokenizer-backend.py
+
+REM Wait for the server to start (adjust the timeout if needed)
+timeout /t 5
+
+REM Open the frontend in the default browser
+start "" "http://localhost:2137"
+```
+
